@@ -89,6 +89,14 @@ def _extract_weight_near_line(lines: List[str], idx: int) -> Optional[Tuple[str,
 
     return None
 
+# 차량번호 라벨 라인에서 digits-only 추출
+# 전형적 패턴 실패 시 후보 수집용
+def _extract_vehicle_digits_from_label_line(line: str, label_token: str) -> str:
+    parts = line.split(label_token, 1)
+    tail = parts[1] if len(parts) > 1 else ""
+    digits = "".join(ch for ch in tail if ch.isdigit())
+    return digits.strip()
+
 # 라벨 기반 후보 추출
 # 매칭 성공 시 score를 높게 부여
 def extract_by_label(normalized_text: str) -> List[Candidate]:
@@ -101,11 +109,11 @@ def extract_by_label(normalized_text: str) -> List[Candidate]:
         ("net_weight_kg", LABEL_TOKENS.get("net_weight", [])),
     ]
 
-    simple_label_map = [
+    dt_label_map = [
         ("date", LABEL_TOKENS.get("date", []), DATE_PATTERN),
         ("time", LABEL_TOKENS.get("time", []), TIME_PATTERN),
-        ("vehicle_no", LABEL_TOKENS.get("vehicle_no", []), VEHICLE_NO_PATTERN),
     ]
+    vehicle_tokens = LABEL_TOKENS.get("vehicle_no", [])
 
     for i, line in enumerate(lines):
         # 1. 중량(kg) 라벨 기반
@@ -130,8 +138,8 @@ def extract_by_label(normalized_text: str) -> List[Candidate]:
                 # 라벨은 있는데 값이 근처에서 안 잡히는 경우는 warning 후보지만 최종 extract_candidates에서 처리
                 pass
 
-        # 2. 날짜/시간/차량번호 라벨 기반
-        for field, tokens, pattern in simple_label_map:
+        # 2. 날짜/시간 라벨 기반
+        for field, tokens, pattern in dt_label_map:
             token = _match_any_token(line, tokens)
             if not token:
                 continue
@@ -153,6 +161,55 @@ def extract_by_label(normalized_text: str) -> List[Candidate]:
                         meta={"line_index": tgt_idx, "label_token": token},
                     )
                     break  
+    
+        # 3. 차량번호 라벨 기반
+        v_token = _match_any_token(line, vehicle_tokens)
+        if v_token:
+            # 1. 같은 줄
+            m = _first_match(VEHICLE_NO_PATTERN, line)
+            if m:
+                _add_candidate(
+                    out,
+                    field="vehicle_no",
+                    value_raw=m.group(0),
+                    source_line=line,
+                    method="label",
+                    score=85,
+                    meta={"line_index": i, "label_token": v_token},
+                )
+            else:
+                # 2. 줄바꿈 케이스
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1]
+                    m2 = _first_match(VEHICLE_NO_PATTERN, next_line)
+                    if m2:
+                        _add_candidate(
+                            out,
+                            field="vehicle_no",
+                            value_raw=m2.group(0),
+                            source_line=next_line,
+                            method="label",
+                            score=85,
+                            meta={"line_index": i + 1, "label_token": v_token},
+                        )
+                        continue
+
+                # 3.  전형적 패턴 실패 →후보 수집
+                digits = _extract_vehicle_digits_from_label_line(line, v_token)
+                if digits:
+                    _add_candidate(
+                        out,
+                        field="vehicle_no",
+                        value_raw=digits,
+                        source_line=line,
+                        method="label",
+                        score=60,  
+                        meta={
+                            "line_index": i,
+                            "label_token": v_token,
+                            "ambiguous": True,
+                        },
+                    )
 
     return out
 
