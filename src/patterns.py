@@ -27,6 +27,8 @@ WEIGHT_KG_PATTERN = re.compile(
 VEHICLE_NO_PATTERN = re.compile(
     r"\b(?:[가-힣]{1,4}\s*)?(?P<prefix>\d{2,3})\s*(?P<hangul>[가-힣])\s*(?P<suffix>\d{4})\b"
 )
+# 숫자만 있는 단순 형태도 후보로 수집
+VEHICLE_NO_SIMPLE = re.compile(r"\b\d{4}\b")
 
 # 라벨 기반 추출 
 # 라벨 토큰 고정해둬 extractor에서 사용
