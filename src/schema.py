@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional, Any
+from pydantic import BaseModel, Field
 
 @dataclass
 class RawDocument:
@@ -56,3 +57,49 @@ class ExtractedCandidates:
     normalized_text: str
     candidates: List[Candidate] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+
+
+
+class ParseResult(BaseModel):
+    """
+      의미가 확정된 최종 파싱 결과를 표현하는 모델
+    - 실패하거나 애매한 경우는 warnings / errors에 반드시 기록
+    """
+
+    # 기본 식별 정보   
+    date: Optional[str] = Field(
+        None, description="계근 일자 (ISO 형식: YYYY-MM-DD)"
+    )
+    time: Optional[str] = Field(
+        None, description="계근 시간 (HH:MM)"
+    )
+    vehicle_no: Optional[str] = Field(
+        None, description="차량 번호"
+    )
+
+    # 중량 정보
+    gross_weight_kg: Optional[int] = Field(
+        None, description="총중량 (kg)"
+    )
+    tare_weight_kg: Optional[int] = Field(
+        None, description="공차중량 (kg)"
+    )
+    net_weight_kg: Optional[int] = Field(
+        None, description="실중량 (kg)"
+    )
+
+    # 파싱/검증 상태
+    parse_warnings: List[str] = Field(
+        default_factory=list,
+        description="정규화/파싱 과정에서 발생한 경고"
+    )
+    validation_errors: List[str] = Field(
+        default_factory=list,
+        description="비즈니스 규칙 위반 등 치명적 검증 오류"
+    )
+
+    # 근거
+    evidence: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="각 필드가 어떤 후보로부터 확정되었는지에 대한 근거 정보"
+    )
