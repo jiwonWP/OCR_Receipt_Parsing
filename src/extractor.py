@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from typing import Dict, Iterable, List, Optional, Tuple
-
+import re
 from .schema import PreprocessedDocument, Candidate, ExtractedCandidates
 from .patterns import (
     DATE_PATTERN,
@@ -45,17 +45,16 @@ def _add_candidate(
         )
     )
 
-# 중복 후보 제거 (완전 동일한 것만)
+# 중복 후보 제거 - 같은 field+value는 최고 score만 유지
 def _dedupe_candidates(candidates: List[Candidate]) -> List[Candidate]:
-    seen = set()
-    out = []
+    by_key: Dict[Tuple[str, str], Candidate] = {}
+    
     for c in candidates:
-        key = (c.field, c.value_raw, c.source_line, c.method)
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(c)
-    return out
+        key = (c.field, c.value_raw)
+        if key not in by_key or c.score > by_key[key].score:
+            by_key[key] = c
+    
+    return list(by_key.values())
 
 # 패턴 매칭
 def _first_match(pattern, text: str):
@@ -74,18 +73,37 @@ def _match_any_token(line: str, tokens: Iterable[str]) -> Optional[str]:
     return None
 
 # 중량(kg) 라벨 주변에서 값 추출
-# 1. 같은 줄-> 2. 다음 줄
+def _extract_weight_from_line(line: str) -> Optional[str]:
+    """
+    중량 값만 추출
+    1. 시간 패턴(HH:MM) 제거
+    2. 남은 텍스트에서 kg 패턴 추출
+    """
+    # 1. 시간 패턴 제거 (HH:MM / HH:MM:SS)
+    cleaned = re.sub(r'\b\d{1,2}:\d{2}(?::\d{2})?\b', '', line)
+    
+    # 2. kg 패턴 찾기
+    m = _first_match(WEIGHT_KG_PATTERN, cleaned)
+    if m:
+        return m.group(0)
+    
+    return None
+
+
 def _extract_weight_near_line(lines: List[str], idx: int) -> Optional[Tuple[str, str]]:
     line = lines[idx]
-    m = _first_match(WEIGHT_KG_PATTERN, line)
-    if m:
-        return (m.group(0), line)
+    
+    # 같은 줄에서 추출
+    weight = _extract_weight_from_line(line)
+    if weight:
+        return (weight, line)
 
+    # 다음 줄 확인
     if idx + 1 < len(lines):
         next_line = lines[idx + 1]
-        m2 = _first_match(WEIGHT_KG_PATTERN, next_line)
-        if m2:
-            return (m2.group(0), next_line)
+        weight = _extract_weight_from_line(next_line)
+        if weight:
+            return (weight, next_line)
 
     return None
 
@@ -134,9 +152,6 @@ def extract_by_label(normalized_text: str) -> List[Candidate]:
                     score=90,
                     meta={"line_index": i, "label_token": token},
                 )
-            else:
-                # 라벨은 있는데 값이 근처에서 안 잡히는 경우는 warning 후보지만 최종 extract_candidates에서 처리
-                pass
 
         # 2. 날짜/시간 라벨 기반
         for field, tokens, pattern in dt_label_map:
@@ -246,7 +261,8 @@ def extract_by_pattern(normalized_text: str) -> List[Candidate]:
             )
 
         # 중량(kg)
-        for m in _all_matches(WEIGHT_KG_PATTERN, line):
+        cleaned = re.sub(r'\b\d{1,2}:\d{2}(?::\d{2})?\b', '', line)
+        for m in _all_matches(WEIGHT_KG_PATTERN, cleaned):
             _add_candidate(
                 out,
                 field="weight_kg",
@@ -281,9 +297,6 @@ def extract_candidates(preprocessed: PreprocessedDocument) -> ExtractedCandidate
     candidates = _dedupe_candidates(label_candidates + pattern_candidates)
 
     warnings: List[str] = []
-
-    def _has_field(prefix: str) -> bool:
-        return any(c.field == prefix for c in candidates)
 
     # 주요 필드 존재 여부
     if not any(c.field in ("date",) for c in candidates):
