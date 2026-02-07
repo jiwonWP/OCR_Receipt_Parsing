@@ -93,7 +93,7 @@ def main() -> None:
 
         try:
             # 실행
-            preprocessed, extracted, resolved, parsed, validation = run_full_pipeline(str(input_path))
+            preprocessed, extracted, resolved, parsed= run_full_pipeline(str(input_path))
 
             stem = input_path.stem
 
