@@ -31,12 +31,16 @@ def _pick_best(items: List[Candidate]) -> Optional[Candidate]:
         return None
 
     def key(c: Candidate):
-        method = c.method
-        score = c.score
-        line_index = c.meta.get("line_index", 10**9)
+        # 1순위: 방법 (label > pattern)
+        method_rank = 0 if c.method == "label" else 1
         
-        method_rank = 0 if method == "label" else 1
-        return (method_rank, -score, line_index)
+        # 2순위: 점수
+        # 단, 라벨 토큰이 source_line에 실제로 들어있는 경우(같은 줄 추출) 가산점 +10
+        score = c.score
+        if c.method == "label" and c.meta.get("label_token") in c.source_line:
+            score += 10
+            
+        return (method_rank, -score, c.meta.get("line_index", 10**9))
 
     return sorted(items, key=key)[0]
 
