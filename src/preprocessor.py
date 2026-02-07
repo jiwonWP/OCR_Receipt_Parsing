@@ -192,6 +192,34 @@ def normalize_line_noise(text: str) -> RuleResult:
     new_text = "\n".join(new_lines)
     return RuleResult(text=new_text, changed=(new_text != text), warnings=[])
 
+def normalize_character_visual_noise(text: str) -> RuleResult:
+    """
+    숫자와 시각적으로 유사한 문자 보정
+    - 날짜/시간/중량 근처에서만 O->0, I/l->1 치환
+    """
+    warnings = []
+    t = text
+    
+    # 날짜 패턴 내 O -> 0 치환
+    def fix_date(m: re.Match) -> str:
+        corrected = m.group(0).replace('O', '0').replace('o', '0')
+        if corrected != m.group(0):
+            warnings.append("found_visual_noise_correction")
+        return corrected
+    
+    t = re.sub(r'\d{4}[-./][O\do]{1,2}[-./][O\do]{1,2}', fix_date, t)
+    
+    # kg 근처 숫자 내 O -> 0, I/l -> 1 치환
+    def fix_weight(m: re.Match) -> str:
+        num = m.group('num')
+        corrected = num.replace('O', '0').replace('o', '0').replace('I', '1').replace('l', '1')
+        if corrected != num:
+            warnings.append("found_visual_noise_correction")
+        return corrected + ' ' + m.group('unit')
+    
+    t = re.sub(r'(?P<num>[\dOolI,\s]+)\s*(?P<unit>kg|KG)', fix_weight, t)
+    
+    return RuleResult(text=t, changed=(t != text), warnings=warnings)
 
 
 def preprocess(raw_text: str) -> PreprocessedDocument:
@@ -204,6 +232,7 @@ def preprocess(raw_text: str) -> PreprocessedDocument:
     # 정규화 규칙 적용 (명세 순서대로)
     t = _apply_rule(t, "collapsed_whitespace", normalize_whitespace, applied_rules, warnings)
     t = _apply_rule(t, "normalized_punctuation_spacing", normalize_punctuation_spacing, applied_rules, warnings)
+    t = _apply_rule(t, "normalized_character_visual_noise", normalize_character_visual_noise, applied_rules, warnings) # 추가
     t = _apply_rule(t, "standardized_labels", normalize_label_variants, applied_rules, warnings)
     t = _apply_rule(t, "converted_korean_time_to_colon_format", normalize_korean_time_format, applied_rules, warnings)
     t = _apply_rule(t, "merged_split_numbers_before_kg", normalize_number_grouping_before_unit, applied_rules, warnings)
