@@ -94,16 +94,8 @@ def validate_and_recover(
     if gross_weight_kg is not None and gross_weight_kg > 100000:
         errors.append(f"unrealistic_weight:gross={gross_weight_kg}")
     
-    # 치명적 오류 판정: 필수 필드 누락, 중량 관계 위반, 음수
-    # weight_mismatch와 unrealistic_weight는 경고성이므로 제외
-    critical_errors = [
-        err for err in errors
-        if err.startswith("missing_required_field") or
-           err.startswith("invalid_weight_relation") or
-           err.startswith("negative_weight")
-    ]
-    
-    is_valid = len(critical_errors) == 0
+    # 최종 판정
+    is_valid = (len(errors) == 0)
     
     return ValidationResult(
         is_valid=is_valid,
