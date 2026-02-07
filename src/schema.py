@@ -25,6 +25,27 @@ class PreprocessedDocument:
     applied_rules: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
+@dataclass
+class ExtractionMetadata:
+    """
+    필드별 추출 근거 메타데이터
+    - field: 어떤 필드인지
+    - strategy_used: 어떤 추출 전략이 사용되었는지
+    - raw_match: 추출에 사용된 원문 매칭 문자열
+    - normalized_match: 추출에 사용된 정규화 후 매칭 문자열
+    - source_line_index: 근거가 된 원문 라인 인덱스 (0-based)
+    - confidence: 추출 신뢰도 (0.0 ~ 1.0)        
+    - is_imputed: 값이 추출된 것이 아니라 복구/계산된 것인지 여부
+    - notes: 추가 설명 또는 이력 기록
+    """
+    field: str
+    strategy_used: str 
+    raw_match: str = ""
+    normalized_match: str = ""
+    source_line_index: int = -1
+    confidence: float = 1.0
+    is_imputed: bool = False
+    notes: str = ""
 
 @dataclass
 class Candidate:
