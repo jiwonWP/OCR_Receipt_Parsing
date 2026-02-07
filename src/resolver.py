@@ -26,7 +26,7 @@ def _rank_key(c: Candidate):
     # 2순위: 점수 (label + 같은 줄 label_token 존재 시 가산점)
     score = c.score
     if c.method == "label" and c.meta.get("label_token"):
-        if c.meta.get("label_token") in c.source_line:
+        if c.meta.get("label_token") in (c.source_line or ""):
             score += 15
 
     # 3순위: line_index
@@ -82,6 +82,7 @@ def resolve_candidates(candidates: List[Candidate]) -> ResolvedFields:
             "selected_method": best.method,
             "selected_score": best.score,
             "selected_source_line": best.source_line,
+            "selected_meta": best.meta,
             "candidate_count": len(items),
         }
         return best.value_raw
