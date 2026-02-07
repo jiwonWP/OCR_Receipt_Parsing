@@ -19,31 +19,33 @@ class ResolvedFields:
     evidence: Dict[str, Any] = field(default_factory=dict)
     warnings: List[str] = field(default_factory=list)
 
+def _rank_key(c: Candidate):
+    # 1순위: 방법 (label > pattern)
+    method_rank = 0 if c.method == "label" else 1
+
+    # 2순위: 점수 (label + 같은 줄 label_token 존재 시 가산점)
+    score = c.score
+    if c.method == "label" and c.meta.get("label_token"):
+        if c.meta.get("label_token") in c.source_line:
+            score += 15
+
+    # 3순위: line_index
+    line_index = c.meta.get("line_index", 10**9)
+
+    return (method_rank, -score, line_index)
 
 def _pick_best(items: List[Candidate]) -> Optional[Candidate]:
     """
     선택 정책:
     1. method == "label" 우선
-    2. score 내림차순
-    3. meta.line_index 오름차순 (없으면 아주 큰 값 취급)
+    2. score 내림차순 (+ label_token same line bonus)
+    3. meta.line_index 오름차순
     """
     if not items:
         return None
 
-    def key(c: Candidate):
-        # 1순위: 방법 (label > pattern)
-        method_rank = 0 if c.method == "label" else 1
-        
-        # 2순위: 점수
-        # 단, 라벨 토큰이 source_line에 실제로 들어있는 경우(같은 줄 추출) 가산점 +15
-        score = c.score
-        if c.method == "label" and c.meta.get("label_token"):
-            if c.meta.get("label_token") in c.source_line:
-                score += 15
-            
-        return (method_rank, -score, c.meta.get("line_index", 10**9))
+    return sorted(items, key=_rank_key)[0]
 
-    return sorted(items, key=key)[0]
 
 
 def resolve_candidates(candidates: List[Candidate]) -> ResolvedFields:
@@ -69,15 +71,10 @@ def resolve_candidates(candidates: List[Candidate]) -> ResolvedFields:
         if best is None:
             return None
 
-        # top2가 동점이면 애매함 경고
+        # top2가 완전히 동률(실제 선택 우선순위 기준)인 경우만 ambiguous 경고
         if len(items) >= 2:
-            sorted_items = sorted(items, key=lambda x: (
-                0 if x.method == "label" else 1,
-                -x.score,
-                x.meta.get("line_index", 10**9),
-            ))
-            a, b = sorted_items[0], sorted_items[1]
-            if a.method == b.method and a.score == b.score:
+            sorted_items = sorted(items, key=_rank_key)
+            if _rank_key(sorted_items[0]) == _rank_key(sorted_items[1]):
                 warnings.append(f"ambiguous_candidate:{field_name}")
 
         evidence[field_name] = {

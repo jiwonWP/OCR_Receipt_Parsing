@@ -42,7 +42,8 @@ def run_normalize_pipeline(input_path: str) -> Tuple[PreprocessedDocument, Extra
         if date_warn:
             parse_warnings.append(f"date:{date_warn}")
         if date_iso is None:
-            parse_warnings.append("date_normalization_failed")
+            if "date_parse_failed" not in parse_warnings:
+                parse_warnings.append("date_parse_failed")
 
     # time
     time_iso = None
