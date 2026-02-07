@@ -58,7 +58,7 @@ class ExtractedCandidates:
     warnings: List[str] = field(default_factory=list)
 
 
-
+@dataclass
 class ParseResult:
     """
     의미가 확정된 최종 파싱 결과를 표현하는 모델
