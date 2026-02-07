@@ -35,10 +35,11 @@ def _pick_best(items: List[Candidate]) -> Optional[Candidate]:
         method_rank = 0 if c.method == "label" else 1
         
         # 2순위: 점수
-        # 단, 라벨 토큰이 source_line에 실제로 들어있는 경우(같은 줄 추출) 가산점 +10
+        # 단, 라벨 토큰이 source_line에 실제로 들어있는 경우(같은 줄 추출) 가산점 +15
         score = c.score
-        if c.method == "label" and c.meta.get("label_token") in c.source_line:
-            score += 10
+        if c.method == "label" and c.meta.get("label_token"):
+            if c.meta.get("label_token") in c.source_line:
+                score += 15
             
         return (method_rank, -score, c.meta.get("line_index", 10**9))
 
