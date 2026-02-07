@@ -80,10 +80,10 @@ def _extract_weight_from_line(line: str) -> Optional[str]:
     2. 남은 텍스트에서 kg 패턴 추출
     """
     # 1. 시간 패턴 제거 (HH:MM / HH:MM:SS)
-    cleaned = re.sub(r'\b\d{1,2}:\d{2}(?::\d{2})?\b', '', line)
-    
+    cleaned = re.sub(r'\b\d{1,2}:\d{2}(?::\d{2})?\b', '', line)   
+
     # 2. kg 패턴 찾기
-    m = _first_match(WEIGHT_KG_PATTERN, cleaned)
+    m = WEIGHT_KG_PATTERN.search(cleaned)
     if m:
         return m.group(0)
     
@@ -101,9 +101,14 @@ def _extract_weight_near_line(lines: List[str], idx: int) -> Optional[Tuple[str,
     # 다음 줄 확인
     if idx + 1 < len(lines):
         next_line = lines[idx + 1]
-        weight = _extract_weight_from_line(next_line)
-        if weight:
-            return (weight, next_line)
+        
+        # [방어 로직] 다음 줄에 다른 핵심 라벨(차량, 날짜, 다른 중량 등)이 보이면 
+        # 현재 라벨의 값일 확률이 낮으므로 추출하지 않음
+        other_labels = ["차량", "번호", "일자", "일시", "총중량", "차중량", "실중량"]
+        if not any(lbl in next_line for lbl in other_labels):
+            weight = _extract_weight_from_line(next_line)
+            if weight:
+                return (weight, next_line)
 
     return None
 
@@ -140,9 +145,24 @@ def extract_by_label(normalized_text: str) -> List[Candidate]:
             if not token:
                 continue
 
-            near = _extract_weight_near_line(lines, i)
-            if near:
-                value_raw, src_line = near
+            # 라벨이 발견된 위치를 찾고, 그 이후의 문자열만 추출 대상로 사용
+            token_index = line.find(token)
+            search_target = line[token_index + len(token):]
+            
+            # 현재 줄의 라벨 뒷부분에서 먼저 검색
+            value_raw = _extract_weight_from_line(search_target)
+            src_line = line
+            
+            # 현재 줄 뒷부분에 숫자가 없다면 다음 줄 확인
+            if not value_raw and i + 1 < len(lines):
+                next_line = lines[i + 1]
+                # 다음 줄에 다른 라벨이 없는지 확인하는 방어 로직
+                other_labels = ["차량", "번호", "일자", "날짜", "총중량", "차중량", "실중량", "공차"]
+                if not any(lbl in next_line for lbl in other_labels):
+                    value_raw = _extract_weight_from_line(next_line)
+                    src_line = next_line
+
+            if value_raw:
                 _add_candidate(
                     out,
                     field=field,
