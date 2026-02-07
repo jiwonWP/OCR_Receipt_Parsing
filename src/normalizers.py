@@ -27,6 +27,10 @@ def normalize_weight_kg(raw: str) -> Optional[int]:
 
     s = re.sub(r"\bkg\b", " ", s, flags=re.IGNORECASE).strip()
 
+    # OCR 공백 분리 천단위 보정
+    while re.search(r"\d\s+\d{3}\b", s):
+        s = re.sub(r"(\d)\s+(?=\d{3}\b)", r"\1", s)
+
     candidates = re.findall(r"\d{1,3}(?:,\d{3})+|\d+", s)
     if not candidates:
         return None

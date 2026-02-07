@@ -71,6 +71,15 @@ def run_normalize_pipeline(input_path: str) -> Tuple[PreprocessedDocument, Extra
         if net_kg is None:
             parse_warnings.append("net_weight_normalization_failed")
 
+    weight_cands = []
+    wk = resolved.evidence.get("weight_kg_candidates", {}).get("candidates", [])
+    for item in wk:
+        raw = item.get("value_raw")
+        if raw:
+            n = normalize_weight_kg(raw)
+            if n is not None:
+                weight_cands.append(n)
+                
     # Validator 단계: 검증 및 실중량 복구
     v = validate_and_recover(
         date=date_iso,
@@ -79,6 +88,7 @@ def run_normalize_pipeline(input_path: str) -> Tuple[PreprocessedDocument, Extra
         gross_weight_kg=gross_kg,
         tare_weight_kg=tare_kg,
         net_weight_kg=net_kg,
+        weight_candidates_kg=weight_cands,
     )
 
     final_net = v.net_weight_kg if v.net_weight_kg is not None else net_kg
@@ -90,13 +100,14 @@ def run_normalize_pipeline(input_path: str) -> Tuple[PreprocessedDocument, Extra
         gross_weight_kg=gross_kg,
         tare_weight_kg=tare_kg,
         net_weight_kg=final_net,
-        parse_warnings=parse_warnings,
+        parse_warnings=parse_warnings + v.imputation_notes,
         validation_errors=v.validation_errors,
         evidence={
             **resolved.evidence,
             "validation": {
                 "is_valid": v.is_valid,
                 "imputation_notes": v.imputation_notes,
+                "error_count": len(v.validation_errors),
             },
         },
     )
@@ -110,34 +121,4 @@ def run_full_pipeline(input_path: str) -> Tuple[PreprocessedDocument, ExtractedC
     
     최종 ParseResult에는 검증 및 복구가 완료된 데이터가 포함됨
     """
-    preprocessed, extracted, resolved, parsed = run_normalize_pipeline(input_path)
-    
-    # Validator 단계: 검증 및 복구
-    validation_result = validate_and_recover(
-        date=parsed.date,
-        time=parsed.time,
-        vehicle_no=parsed.vehicle_no,
-        gross_weight_kg=parsed.gross_weight_kg,
-        tare_weight_kg=parsed.tare_weight_kg,
-        net_weight_kg=parsed.net_weight_kg,
-    )
-    
-    # 복구된 net_weight 반영
-    if validation_result.net_weight_kg is not None:
-        parsed.net_weight_kg = validation_result.net_weight_kg
-    
-    # 검증 오류 및 복구 노트 반영
-    parsed.validation_errors = validation_result.validation_errors
-    
-    # imputation 정보를 parse_warnings에 추가
-    if validation_result.imputation_notes:
-        parsed.parse_warnings.extend(validation_result.imputation_notes)
-    
-    # evidence에 validation 결과 추가
-    parsed.evidence["validation"] = {
-        "is_valid": validation_result.is_valid,
-        "has_imputation": len(validation_result.imputation_notes) > 0,
-        "error_count": len(validation_result.validation_errors),
-    }
-    
-    return preprocessed, extracted, resolved, parsed
+    return run_normalize_pipeline(input_path)

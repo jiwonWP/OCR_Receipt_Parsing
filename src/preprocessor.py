@@ -232,7 +232,7 @@ def preprocess(raw_text: str) -> PreprocessedDocument:
     # 정규화 규칙 적용 (명세 순서대로)
     t = _apply_rule(t, "collapsed_whitespace", normalize_whitespace, applied_rules, warnings)
     t = _apply_rule(t, "normalized_punctuation_spacing", normalize_punctuation_spacing, applied_rules, warnings)
-    t = _apply_rule(t, "normalized_character_visual_noise", normalize_character_visual_noise, applied_rules, warnings) # 추가
+    
     t = _apply_rule(t, "standardized_labels", normalize_label_variants, applied_rules, warnings)
     t = _apply_rule(t, "converted_korean_time_to_colon_format", normalize_korean_time_format, applied_rules, warnings)
     t = _apply_rule(t, "merged_split_numbers_before_kg", normalize_number_grouping_before_unit, applied_rules, warnings)

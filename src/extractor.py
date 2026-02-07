@@ -127,6 +127,31 @@ def _extract_weight_near_line(lines: List[str], idx: int) -> Optional[Tuple[str,
 
     return None
 
+# Extract 중량(kg) 토큰 이후의 숫자 토큰
+def _extract_weight_after_token(line: str, token: str) -> Optional[str]:
+    """
+    라벨 토큰 이후 구간에서만 kg 값을 찾는다.
+    - 선행 ':' 때문에 WEIGHT_KG_PATTERN의 (?<![:\d])에 걸려
+      '5 900 kg'에서 '900 kg'만 잡히는 문제를 방지한다.
+    """
+    if not token:
+        return None
+
+    pos = line.find(token)
+    if pos < 0:
+        return None
+
+    tail = line[pos + len(token):]
+
+    # 토큰 뒤에 오는 ':'/공백 제거
+    tail = re.sub(r"^[\s:]+", "", tail)
+
+    m = _first_match(WEIGHT_KG_PATTERN, tail)
+    if not m:
+        return None
+    return m.group(0)
+
+
 
 def _extract_vehicle_digits_from_label_line(line: str, label_token: str) -> str:
     parts = line.split(label_token, 1)
@@ -162,7 +187,13 @@ def extract_by_label(normalized_text: str) -> Tuple[List[Candidate], List[str]]:
             if not token:
                 continue
 
-            near = _extract_weight_near_line(lines, i)
+            # 같은 줄에서 토큰 이후 구간 우선 탐색
+            value_raw = _extract_weight_after_token(line, token)
+            if value_raw:
+                near = (value_raw, line)
+            else:
+                near = _extract_weight_near_line(lines, i)
+
             if near:
                 value_raw, src_line = near
                 _add_candidate(
