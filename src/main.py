@@ -149,13 +149,28 @@ def main() -> None:
                 parsed_dict,
             )
 
+            # 검증 결과 판정
+            validation_info = parsed_dict.get("evidence", {}).get("validation", {})
+            is_valid = validation_info.get("is_valid", False)
+            has_imputation = validation_info.get("has_imputation", False)
+            
+            status_symbol = "✓" if is_valid else "✗"
+            status_text = "VALID" if is_valid else "INVALID"
+
             # 콘솔 출력
             print(f"\n{'='*60}")
-            print(f"파일: {filename}")
+            print(f"파일: {filename} [{status_symbol} {status_text}]")
             print(f"{'='*60}")
             print(f"\n[1] 전처리 단계")
             print(f"  - 적용 규칙: {len(preprocessed.applied_rules)}개")
+            if preprocessed.applied_rules:
+                print(f"    · {', '.join(preprocessed.applied_rules[:5])}")
+                if len(preprocessed.applied_rules) > 5:
+                    print(f"    · ... 외 {len(preprocessed.applied_rules) - 5}개")
             print(f"  - 경고: {len(preprocessed.warnings)}개")
+            if preprocessed.warnings:
+                for w in preprocessed.warnings[:3]:
+                    print(f"    · {w}")
             
             print(f"\n[2] 추출 단계")
             print(f"  - 후보 총개수: {summary['counts']['total']}")
@@ -168,37 +183,66 @@ def main() -> None:
             for field_name in ["date_raw", "time_raw", "vehicle_no_raw", 
                               "gross_weight_raw", "tare_weight_raw", "net_weight_raw"]:
                 value = resolved_dict.get(field_name)
-                print(f"    · {field_name}: {value if value else '(없음)'}")
+                print(f"    · {field_name:20s}: {value if value else '(없음)'}")
             print(f"  - 선택 경고: {len(resolved_dict.get('warnings', []))}개")
             
             print(f"\n[4] 정규화 단계")
             print(f"  - 최종 결과:")
-            print(f"    · 날짜: {parsed_dict.get('date', '(없음)')}")
-            print(f"    · 시간: {parsed_dict.get('time', '(없음)')}")
+            print(f"    · 날짜:     {parsed_dict.get('date', '(없음)')}")
+            print(f"    · 시간:     {parsed_dict.get('time', '(없음)')}")
             print(f"    · 차량번호: {parsed_dict.get('vehicle_no', '(없음)')}")
-            print(f"    · 총중량: {parsed_dict.get('gross_weight_kg', '(없음)')} kg")
-            print(f"    · 차중량: {parsed_dict.get('tare_weight_kg', '(없음)')} kg")
-            print(f"    · 실중량: {parsed_dict.get('net_weight_kg', '(없음)')} kg")
+            
+            gross = parsed_dict.get('gross_weight_kg')
+            tare = parsed_dict.get('tare_weight_kg')
+            net = parsed_dict.get('net_weight_kg')
+            
+            print(f"    · 총중량:   {f'{gross:,} kg' if gross is not None else '(없음)'}")
+            print(f"    · 차중량:   {f'{tare:,} kg' if tare is not None else '(없음)'}")
+            print(f"    · 실중량:   {f'{net:,} kg' if net is not None else '(없음)'}", end="")
+            if has_imputation:
+                print(" [계산됨]")
+            else:
+                print()
+            
             print(f"  - 정규화 경고: {len(parsed_dict.get('parse_warnings', []))}개")
+            if parsed_dict.get('parse_warnings'):
+                for w in parsed_dict.get('parse_warnings', [])[:3]:
+                    print(f"    · {w}")
+            
+            print(f"\n[5] 검증 단계")
+            print(f"  - 검증 결과: {status_text}")
             print(f"  - 검증 오류: {len(parsed_dict.get('validation_errors', []))}개")
+            if parsed_dict.get('validation_errors'):
+                for e in parsed_dict.get('validation_errors', []):
+                    print(f"    ✗ {e}")
+            
+            # 중량 관계 검증 결과 요약
+            if gross is not None and tare is not None and net is not None:
+                calc_net = gross - tare
+                match = "일치" if calc_net == net else f"불일치 (계산={calc_net:,}kg)"
+                print(f"  - 중량 관계: {gross:,} - {tare:,} = {net:,} [{match}]")
             
             print(f"\n[산출물]")
-            print(f"  - {stem}_raw.txt")
-            print(f"  - {stem}_normalized.txt")
-            print(f"  - {stem}_preprocess_log.json")
-            print(f"  - {stem}_candidates.json")
-            print(f"  - {stem}_extract_log.json")
-            print(f"  - {stem}_resolved.json")
-            print(f"  - {stem}_parsed.json")
+            files = [
+                f"{stem}_raw.txt",
+                f"{stem}_normalized.txt",
+                f"{stem}_preprocess_log.json",
+                f"{stem}_candidates.json",
+                f"{stem}_extract_log.json",
+                f"{stem}_resolved.json",
+                f"{stem}_parsed.json",
+            ]
+            for f in files:
+                print(f"  - {f}")
             
-            results.append(("SUCCESS", filename))
+            results.append(("SUCCESS", filename, is_valid))
             
         except Exception as e:
             print(f"\nERROR: {filename} 처리 중 오류 발생")
             print(f"  {type(e).__name__}: {e}")
             import traceback
             traceback.print_exc()
-            results.append(("FAILED", filename))
+            results.append(("FAILED", filename, False))
             continue
 
     # 최종 요약
@@ -207,9 +251,30 @@ def main() -> None:
     print(f"{'='*60}")
     print(f"저장 위치: {PROCESSED_DIR}")
     print(f"\n결과 요약:")
-    for status, name in results:
-        symbol = "✓" if status == "SUCCESS" else "✗" if status == "FAILED" else "−"
-        print(f"  {symbol} {status:7s} : {name}")
+    
+    success_count = sum(1 for r in results if r[0] == "SUCCESS")
+    valid_count = sum(1 for r in results if r[0] == "SUCCESS" and len(r) > 2 and r[2])
+    
+    for result in results:
+        if len(result) == 2:
+            status, name = result
+            is_valid = False
+        else:
+            status, name, is_valid = result
+        
+        if status == "SUCCESS":
+            symbol = "✓" if is_valid else "⚠"
+            detail = "VALID" if is_valid else "INVALID"
+            print(f"  {symbol} {status:7s} ({detail:7s}) : {name}")
+        elif status == "FAILED":
+            print(f"  ✗ {status:7s}             : {name}")
+        else:
+            print(f"  − {status:7s}             : {name}")
+    
+    print(f"\n통계:")
+    print(f"  - 전체:     {len(results)}개")
+    print(f"  - 성공:     {success_count}개")
+    print(f"  - 검증통과: {valid_count}개")
 
 
 if __name__ == "__main__":
