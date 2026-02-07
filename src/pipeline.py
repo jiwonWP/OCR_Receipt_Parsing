@@ -4,6 +4,7 @@ from typing import Tuple
 from .loader import load_ocr_json
 from .preprocessor import preprocess
 from .extractor import extract_candidates
+from .resolver import resolve_candidates, ResolvedFields
 from .schema import PreprocessedDocument, ExtractedCandidates
 
 
@@ -19,6 +20,12 @@ def run_extract_pipeline(input_path: str) -> ExtractedCandidates:
     extracted = extract_candidates(preprocessed)
     return extracted
 
+def run_resolve_pipeline(input_path: str) -> Tuple[PreprocessedDocument, ExtractedCandidates, ResolvedFields]:
+    # Loader -> Preprocessor -> Extractor -> Resolver 파이프라인 실행
+    preprocessed = run_preprocess_pipeline(input_path)
+    extracted = extract_candidates(preprocessed)
+    resolved = resolve_candidates(extracted.candidates)
+    return preprocessed, extracted, resolved
 
 def run_full_pipeline(input_path: str) -> Tuple[PreprocessedDocument, ExtractedCandidates]:
     # 전처리 산출물 + 후보 수집 산출물을 함께 반환
