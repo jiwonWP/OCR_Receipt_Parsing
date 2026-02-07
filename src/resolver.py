@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from collections import defaultdict
 
 from .schema import Candidate
+from .config import Constants
 
 
 @dataclass
@@ -19,6 +20,7 @@ class ResolvedFields:
     evidence: Dict[str, Any] = field(default_factory=dict)
     warnings: List[str] = field(default_factory=list)
 
+
 def _rank_key(c: Candidate):
     # 1순위: 방법 (label > pattern)
     method_rank = 0 if c.method == "label" else 1
@@ -27,12 +29,13 @@ def _rank_key(c: Candidate):
     score = c.score
     if c.method == "label" and c.meta.get("label_token"):
         if c.meta.get("label_token") in (c.source_line or ""):
-            score += 15
+            score += Constants.LABEL_BONUS_SCORE
 
     # 3순위: line_index
     line_index = c.meta.get("line_index", 10**9)
 
     return (method_rank, -score, line_index)
+
 
 def _pick_best(items: List[Candidate]) -> Optional[Candidate]:
     """
@@ -45,7 +48,6 @@ def _pick_best(items: List[Candidate]) -> Optional[Candidate]:
         return None
 
     return sorted(items, key=_rank_key)[0]
-
 
 
 def resolve_candidates(candidates: List[Candidate]) -> ResolvedFields:

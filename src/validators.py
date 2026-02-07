@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from .config import ValidationPolicy
+
 
 @dataclass
 class ValidationResult:
@@ -12,10 +14,11 @@ class ValidationResult:
     validation_errors: List[str] = field(default_factory=list)
     imputation_notes: List[str] = field(default_factory=list)
 
+
 def _tolerance(expected: int) -> int:
-    # 오차 허용 범위: +,-10kg 또는 +,-2% 중 큰 값
-    # expected=0인 경우에도 최소 10kg 허용
-    return max(10, int(expected * 0.02))
+    """오차 허용 범위 계산 (config.py 정책 사용)"""
+    return ValidationPolicy.get_tolerance(expected)
+
 
 def _relation_ok(gross: int, tare: int, net: int) -> Tuple[bool, int, int, int]:
     # gross, tare, net 사이의 관계가 허용 오차 내에 있는지 검사
@@ -23,6 +26,7 @@ def _relation_ok(gross: int, tare: int, net: int) -> Tuple[bool, int, int, int]:
     diff = abs(net - expected)
     tol = _tolerance(expected)
     return (diff <= tol, expected, diff, tol)
+
 
 def _unique_ints(values: list[int]) -> list[int]:
     seen = set()
@@ -33,6 +37,7 @@ def _unique_ints(values: list[int]) -> list[int]:
         seen.add(v)
         out.append(v)
     return out
+
 
 def _try_recover_by_candidates(
     gross: Optional[int],
@@ -164,6 +169,7 @@ def _try_recover_by_candidates(
 
     return gross, tare, net, None
 
+
 def validate_and_recover(
     date: Optional[str],
     time: Optional[str],
@@ -198,14 +204,13 @@ def validate_and_recover(
     final_tare = tare_weight_kg
     final_net = net_weight_kg
     
-    # 1. 필수 필드 검증
-    if not date:
-        errors.append("missing_required_field:date")
+    # 1. 필수 필드 검증 
+    for field_name in ValidationPolicy.REQUIRED_FIELDS:
+        value = locals().get(field_name)
+        if not value:
+            errors.append(f"missing_required_field:{field_name}")
     
-    if not vehicle_no:
-        errors.append("missing_required_field:vehicle_no")
-    
-    # 2. 중량 관계 검증
+    # 2. 중량 범위 검증 
     if final_gross is not None and final_gross < 0:
         errors.append(f"negative_weight:gross={final_gross}")
     if final_tare is not None and final_tare < 0:
@@ -213,10 +218,10 @@ def validate_and_recover(
     if final_net is not None and final_net < 0:
         errors.append(f"negative_weight:net={final_net}")
 
-    if final_gross is not None and final_gross > 100000:
+    if final_gross is not None and final_gross > ValidationPolicy.MAX_REALISTIC_WEIGHT_KG:
         errors.append(f"unrealistic_weight:gross={final_gross}")
     
-    # 3. 중량이 음수인지 검증
+    # 3. 중량 관계 검증
     if final_gross is not None and final_tare is not None:
         if final_gross < final_tare:
             errors.append(
@@ -238,6 +243,7 @@ def validate_and_recover(
                     f"[expected={expected}, diff={diff}, tolerance={tol}]"
                 )
     
+    # 4. 중량 불일치 시 후보 기반 복구 시도
     has_mismatch = any(e.startswith("weight_mismatch:") for e in errors)
     if has_mismatch and weight_candidates_kg:
         new_g, new_t, new_n, note = _try_recover_by_candidates(

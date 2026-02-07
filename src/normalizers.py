@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from typing import Optional, Tuple
 
+from .config import Constants
 
 _DATE_SEPS_PATTERN = re.compile(r"[./\s]+")
 
@@ -29,7 +30,7 @@ def normalize_weight_kg(raw: str) -> Optional[int]:
 
     # OCR 공백 분리 천단위 보정
     MAX_ITER = 10
-    for _ in range(MAX_ITER):
+    for _ in range(Constants.MAX_WEIGHT_NORMALIZATION_ITERATIONS):
         new_s = re.sub(r"(\d)\s+(?=\d{3}\b)", r"\1", s)
         if new_s == s:
             break
