@@ -151,11 +151,12 @@ def main() -> None:
 
             # 검증 결과 판정
             validation_info = parsed_dict.get("evidence", {}).get("validation", {})
-            is_valid = validation_info.get("is_valid", False)
-            has_imputation = validation_info.get("has_imputation", False)
+            # 단순히 실행 성공이 아니라, 에러가 없어야 성공으로 판정
+            has_validation_errors = len(parsed_dict.get("validation_errors", [])) > 0
+            is_really_valid = validation_info.get("is_valid", False) and not has_validation_errors
             
-            status_symbol = "✓" if is_valid else "✗"
-            status_text = "VALID" if is_valid else "FAIL"
+            status_symbol = "✓" if is_really_valid else "✗"
+            status_text = "VALID" if is_really_valid else "FAIL"
 
             # 콘솔 출력
             print(f"\n{'='*60}")
@@ -199,10 +200,6 @@ def main() -> None:
             print(f"    · 총중량:   {f'{gross:,} kg' if gross is not None else '(없음)'}")
             print(f"    · 차중량:   {f'{tare:,} kg' if tare is not None else '(없음)'}")
             print(f"    · 실중량:   {f'{net:,} kg' if net is not None else '(없음)'}", end="")
-            if has_imputation:
-                print(" [계산됨]")
-            else:
-                print()
             
             print(f"  - 정규화 경고: {len(parsed_dict.get('parse_warnings', []))}개")
             if parsed_dict.get('parse_warnings'):
@@ -235,7 +232,7 @@ def main() -> None:
             for f in files:
                 print(f"  - {f}")
             
-            results.append(("SUCCESS", filename, is_valid))
+            results.append(("SUCCESS", filename, is_really_valid))
             
         except Exception as e:
             print(f"\nERROR: {filename} 처리 중 오류 발생")
@@ -253,8 +250,8 @@ def main() -> None:
     print(f"\n결과 요약:")
     
     success_count = sum(1 for r in results if r[0] == "SUCCESS")
-    valid_count = sum(1 for r in results if r[0] == "SUCCESS" and len(r) > 2 and r[2])
-    
+    valid_count = sum(1 for r in results if r[0] == "SUCCESS" and r[2] == True)
+
     for result in results:
         status, name, is_valid = result if len(result) == 3 else (*result, False)
         
