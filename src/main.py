@@ -159,8 +159,8 @@ def main() -> None:
 
             # 5) 검증 결과
             # validation_errors == 0 인 경우만 VALID
-            validation_errors = parsed_dict.get("validation_errors", []) or []
-            is_valid = len(validation_errors) == 0
+            validation_errors = parsed.validation_errors or []
+            is_valid = (len(validation_errors) == 0)
 
             status_symbol = "✓" if is_valid else "✗"
             status_text = "VALID" if is_valid else "INVALID"
@@ -257,6 +257,8 @@ def main() -> None:
 
             # 실행은 성공했고, 검증 통과 여부는 is_valid로만 판단
             results.append(("SUCCESS", filename, is_valid))
+            status_text = "VALID" if is_valid else "INVALID"
+            print(f"파일: {filename} [SUCCESS ({status_text})]")
 
         except Exception as e:
             print(f"\nERROR: {filename} 처리 중 오류 발생")

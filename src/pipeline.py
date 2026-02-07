@@ -71,16 +71,34 @@ def run_normalize_pipeline(input_path: str) -> Tuple[PreprocessedDocument, Extra
         if net_kg is None:
             parse_warnings.append("net_weight_normalization_failed")
 
-    result = ParseResult(
+    # Validator 단계: 검증 및 실중량 복구
+    v = validate_and_recover(
         date=date_iso,
         time=time_iso,
         vehicle_no=resolved.vehicle_no_raw,
         gross_weight_kg=gross_kg,
         tare_weight_kg=tare_kg,
         net_weight_kg=net_kg,
+    )
+
+    final_net = v.net_weight_kg if v.net_weight_kg is not None else net_kg
+
+    result = ParseResult(
+        date=date_iso,
+        time=time_iso,
+        vehicle_no=resolved.vehicle_no_raw,
+        gross_weight_kg=gross_kg,
+        tare_weight_kg=tare_kg,
+        net_weight_kg=final_net,
         parse_warnings=parse_warnings,
-        validation_errors=[],
-        evidence=resolved.evidence,
+        validation_errors=v.validation_errors,
+        evidence={
+            **resolved.evidence,
+            "validation": {
+                "is_valid": v.is_valid,
+                "imputation_notes": v.imputation_notes,
+            },
+        },
     )
 
     return preprocessed, extracted, resolved, result

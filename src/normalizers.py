@@ -25,15 +25,26 @@ def normalize_weight_kg(raw: str) -> Optional[int]:
     if s.startswith("(") and s.endswith(")"):
         s = s[1:-1].strip()
 
-    # 숫자만 추출 (쉼표 제거)
-    digits = re.findall(r"\d+", s.replace(",", ""))
-    if not digits:
+    s = re.sub(r"\bkg\b", " ", s, flags=re.IGNORECASE).strip()
+
+    candidates = re.findall(r"\d{1,3}(?:,\d{3})+|\d+", s)
+    if not candidates:
         return None
 
-    # 예: "12 340" 같이 떨어져있는 경우 합쳐서 처리
-    merged = "".join(digits)
+    # 1) 쉼표 포함 후보 우선 
+    comma_candidates = [c for c in candidates if "," in c]
+    if comma_candidates:
+        pick = max(comma_candidates, key=lambda x: len(x.replace(",", "")))
+    else:
+        # 2) 없으면 가장 긴 숫자 토큰 선택
+        pick = max(candidates, key=len)
+
+    digits = pick.replace(",", "")
+    if not digits.isdigit():
+        return None
+
     try:
-        return int(merged)
+        return int(digits)
     except ValueError:
         return None
 

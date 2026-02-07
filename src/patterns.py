@@ -18,7 +18,7 @@ TIME_PATTERN = re.compile(
 # kg 주변 숫자를 후보로 수집.(kg이 실제로 붙은 경우 위주)
 # 예시: 12,340 kg / 12340kg / 12340 KG / 12 340 kg 
 WEIGHT_KG_PATTERN = re.compile(
-    r"(?P<num>\d[\d,\s]*\d|\d)\s*(?P<unit>kg|KG|Kg|kG)\b"
+    r"(?<![:\d])(?P<num>\d[\d,\s]*\d|\d)\s*(?P<unit>kg|KG|Kg|kG)\b"
 )
 
 # 차량번호
