@@ -155,7 +155,7 @@ def main() -> None:
             has_imputation = validation_info.get("has_imputation", False)
             
             status_symbol = "✓" if is_valid else "✗"
-            status_text = "VALID" if is_valid else "INVALID"
+            status_text = "VALID" if is_valid else "FAIL"
 
             # 콘솔 출력
             print(f"\n{'='*60}")
@@ -256,25 +256,19 @@ def main() -> None:
     valid_count = sum(1 for r in results if r[0] == "SUCCESS" and len(r) > 2 and r[2])
     
     for result in results:
-        if len(result) == 2:
-            status, name = result
-            is_valid = False
-        else:
-            status, name, is_valid = result
+        status, name, is_valid = result if len(result) == 3 else (*result, False)
         
         if status == "SUCCESS":
-            symbol = "✓" if is_valid else "⚠"
-            detail = "VALID" if is_valid else "INVALID"
+            # 검증을 통과해야만 PASS, 실패하면 FAIL
+            symbol = "✓" if is_valid else "✗"
+            detail = "PASS" if is_valid else "FAIL"
             print(f"  {symbol} {status:7s} ({detail:7s}) : {name}")
-        elif status == "FAILED":
-            print(f"  ✗ {status:7s}             : {name}")
-        else:
-            print(f"  − {status:7s}             : {name}")
-    
+        # ...
+
     print(f"\n통계:")
     print(f"  - 전체:     {len(results)}개")
-    print(f"  - 성공:     {success_count}개")
-    print(f"  - 검증통과: {valid_count}개")
+    print(f"  - 성공(실행): {success_count}개")
+    print(f"  - 검증통과(무결): {valid_count}개")
 
 
 if __name__ == "__main__":
