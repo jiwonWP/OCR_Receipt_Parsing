@@ -100,8 +100,9 @@ def run_normalize_pipeline(input_path: str) -> Tuple[PreprocessedDocument, Extra
         gross_weight_kg=gross_kg,
         tare_weight_kg=tare_kg,
         net_weight_kg=final_net,
-        parse_warnings=parse_warnings + v.imputation_notes,
+        parse_warnings=parse_warnings,
         validation_errors=v.validation_errors,
+        imputation_notes=v.imputation_notes,
         evidence={
             **resolved.evidence,
             "validation": {
