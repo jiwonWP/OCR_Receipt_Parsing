@@ -1,567 +1,434 @@
 # 프로젝트 구조
 
-## Sprint 5 리팩토링 완료 상태
+## 디렉토리 구조
 
 ```
-ocr-data-pipeline/
+ocr-parsing-pipeline/
+├── data/
+│   ├── raw/                      # OCR 입력 파일 (JSON)
+│   │   ├── sample_01.json
+│   │   ├── sample_02.json
+│   │   ├── sample_03.json
+│   │   └── sample_04.json
+│   └── processed/                # 파이프라인 출력 파일
+│       ├── sample_XX_raw.txt
+│       ├── sample_XX_normalized.txt
+│       ├── sample_XX_preprocess_log.json
+│       ├── sample_XX_candidates.json
+│       ├── sample_XX_extract_log.json
+│       ├── sample_XX_resolved.json
+│       ├── sample_XX_parsed.json
+│       └── summary.csv
 │
-├── docs/                         #  문서
-│   ├── architecture.md           # 시스템 아키텍처 설계
-│   ├── CLI_GUIDE.md              # CLI 사용 가이드
-│   ├── data_audit.md             # OCR 샘플 전수 조사 결과
-│   ├── OUTPUT_SPEC.md            # 출력 파일 명세서
-│   ├── preprocess_spec.md        # 전처리 규칙 명세서
-│   ├── PROJECT_STRUCTURE.md      # 프로젝트 구조 (본 파일)
-│   ├── README_docs.md            # 문서 인덱스
-│   ├── README_TEST.md            # 테스트 실행 가이드
-│   └── sprint.md                 # Sprint 계획
-│
-├── logs/                         #  로그 파일 (자동 생성)
+├── logs/                         # 실행 로그
 │   ├── pipeline_YYYYMMDD_HHMMSS.log
-│   └── error_report.txt          # 에러 발생 시 생성
+│   └── error_report.txt
 │
-├── outputs/                      #  출력 파일 (자동 생성)
-│   ├── sample_01_raw.txt
-│   ├── sample_01_normalized.txt
-│   ├── sample_01_preprocess_log.json
-│   ├── sample_01_candidates.json
-│   ├── sample_01_extract_log.json
-│   ├── sample_01_resolved.json
-│   ├── sample_01_parsed.json
-│   ├── ... (sample_02, 03, 04 ...)
-│   └── summary.csv               # 전체 요약
-│
-├── src/                          #  소스 코드
-│   ├── __pycache__/              # Python 캐시 (자동 생성)
+├── src/
 │   ├── __init__.py
-│   ├── config.py                 #  설정/정책 중앙화
-│   ├── error_handler.py          #  에러 핸들링
-│   ├── extractor.py              #  후보 추출 엔진
-│   ├── loader.py                 #  JSON 로더
-│   ├── logger.py                 #  로깅 시스템
-│   ├── main.py                   #  메인 실행 엔트리포인트
-│   ├── normalizers.py            #  정규화 함수
-│   ├── output_formatters.py      #  출력 포맷터
-│   ├── patterns.py               #  정규식 패턴 (config 사용)
-│   ├── pipeline.py               #  파이프라인 오케스트레이션
-│   ├── preprocessor.py           #  전처리 엔진
-│   ├── progress.py               #  진행 상황 표시
-│   ├── resolver.py               #  후보 선택 알고리즘
-│   ├── schema.py                 #  데이터 스키마 (Pydantic)
-│   ├── schemas.py                #  출력 스키마 정의 (TypedDict)
-│   ├── utils.py                  #  순수 함수 유틸리티
-│   └── validators.py             #  검증 및 복구 로직
+│   ├── main.py                   # 실행 엔트리포인트
+│   ├── pipeline.py               # 파이프라인 오케스트레이션
+│   │
+│   ├── loader.py                 # [1단계] JSON 파일 로드
+│   ├── preprocessor.py           # [2단계] 텍스트 정규화
+│   ├── extractor.py              # [3단계] 후보 추출
+│   ├── resolver.py               # [4단계] 후보 선택
+│   ├── normalizers.py            # [5단계] 타입 정규화
+│   ├── validators.py             # [6단계] 검증 및 복구
+│   │
+│   ├── config.py                 # 정책 및 상수
+│   ├── patterns.py               # 정규식 패턴
+│   ├── schema.py                 # 내부 데이터 모델 (dataclass)
+│   ├── schemas.py                # 출력 스키마 (TypedDict)
+│   │
+│   ├── output_formatters.py     # 출력 파일 생성
+│   ├── utils.py                  # 유틸리티 함수
+│   │
+│   ├── error_handler.py          # 에러 처리
+│   ├── logger.py                 # 로깅 시스템
+│   └── progress.py               # 진행 상황 표시
 │
-├── tests/                        #  테스트 코드
-│   ├── __pycache__/              # Python 캐시 (자동 생성)
+├── tests/
 │   ├── __init__.py
-│   ├── conftest.py               # pytest fixture
-│   ├── README.md                 # 테스트 가이드
-│   ├── test_config.py            # 🟢 설정 테스트 (10+)
-│   ├── test_normalizers.py       # 🔥 정규화 테스트 (30+)
-│   ├── test_output_formatters.py # 🟢 포맷터 테스트 (20+)
-│   ├── test_preprocessor.py      # 🟡 전처리 테스트 (15+)
-│   ├── test_schemas.py           # 🟢 스키마 테스트 (20+)
-│   ├── test_utils.py             # 🟡 유틸리티 테스트 (15+)
-│   └── test_validators.py        # 🔥 검증 테스트 (15+)
+│   ├── conftest.py               # pytest fixtures
+│   ├── test_config.py
+│   ├── test_normalizers.py
+│   ├── test_validators.py
+│   ├── test_utils.py
+│   ├── test_preprocessor.py
+│   ├── test_schemas.py
+│   └── test_output_formatters.py
 │
-├── venv/                         #  가상 환경 (선택적)
+├── docs/
+│   ├── architecture.md           # 시스템 아키텍처
+│   ├── preprocess_spec.md        # 전처리 규칙 명세
+│   ├── data_audit.md             # OCR 샘플 분석
+│   ├── sprint.md                 # Sprint 계획
+│   ├── CLI_GUIDE.md              # CLI 사용 가이드
+│   ├── OUTPUT_SPEC.md            # 출력 파일 명세
+│   ├── README_TEST.md            # 테스트 가이드
+│   └── README_docs.md            # 문서 인덱스
 │
-├── .gitignore                    # Git 무시 파일
-├── pytest.ini                    # pytest 설정
-├── README.md                     # 프로젝트 루트 README
-├── requirements.txt              # 패키지 의존성
-└── requirements-test.txt         # 테스트 의존성
+├── .gitignore
+├── pytest.ini
+├── requirements.txt
+├── requirements-test.txt
+└── README.md
 ```
 
 ---
 
-## 모듈 책임 분리
+## 파이프라인 흐름
 
-### 1. 핵심 파이프라인 모듈 (Pipeline Modules)
-
-#### 1.1 `loader.py`
-**책임**: OCR JSON 파일 로드 및 원문 보존
-
-**주요 함수**:
-- `load_ocr_json(filepath: str) -> RawDocument`
-  - JSON 파일 읽기
-  - `text` 필드 추출
-  - 원문 보존 (변형 금지)
-
----
-
-#### 1.2 `preprocessor.py`
-**책임**: 원본 OCR 텍스트를 정규화하여 추출하기 좋은 형태로 변환
-
-**주요 함수**:
-- `preprocess(raw_text: str) -> PreprocessedDocument`
-  - 11가지 전처리 규칙 순차 적용
-  - 규칙 적용 이력 추적
-  - 경고 메시지 기록
-
-**전처리 규칙 순서** (`config.PreprocessRules.EXECUTION_ORDER`):
-1. `collapsed_whitespace`: 연속 공백 제거
-2. `normalized_punctuation_spacing`: 구두점 정규화
-3. `normalized_character_visual_noise`: OCR 노이즈 보정 (I→1, O→0)
-4. `standardized_labels`: 라벨 변형 통일
-5. `converted_korean_time_to_colon_format`: 한글 시간 → 콜론 형식
-6. `merged_split_numbers_before_kg`: kg 앞 분리된 숫자 병합
-7. `split_date_suffix_to_doc_seq`: 날짜 suffix 분리
-8. `preserved_ambiguous_date_tail_as_raw_tail`: 모호한 tail 보존
-9. `split_vehicle_tail_keyword_as_category`: 차량 키워드 분리
-10. `normalized_coordinates`: 좌표 정규화
-11. `removed_symbol_only_lines`: 기호만 있는 줄 제거
-
-**참고 문서**: [preprocess_spec.md](preprocess_spec.md)
+```
+[입력] sample_XX.json
+    ↓
+[1] loader.py          → RawDocument
+    ↓
+[2] preprocessor.py    → PreprocessedDocument
+    ↓
+[3] extractor.py       → ExtractedCandidates
+    ↓
+[4] resolver.py        → ResolvedFields
+    ↓
+[5] normalizers.py     → 타입 변환 (str→int, date, time)
+    ↓
+[6] validators.py      → ValidationResult (검증 + 복구)
+    ↓
+[7] output_formatters.py → JSON, CSV 파일 생성
+    ↓
+[출력] data/processed/
+```
 
 ---
 
-#### 1.3 `extractor.py`
-**책임**: 정규화된 텍스트에서 필드 후보들을 추출
+## 핵심 모듈 설명
 
-**주요 함수**:
-- `extract_candidates(normalized_text: str) -> ExtractedCandidates`
-  - 3가지 추출 방법 통합
-  - 후보별 신뢰도 점수 계산
-  - 메타데이터 첨부
+### 파이프라인 단계
 
-**추출 방법**:
+| 모듈 | 책임 | 입력 | 출력 |
+|------|------|------|------|
+| **loader.py** | JSON 파일 읽기 | 파일 경로 | `RawDocument` |
+| **preprocessor.py** | 텍스트 정규화 | `raw_text` | `PreprocessedDocument` |
+| **extractor.py** | 후보 추출 (라벨/패턴) | `normalized_text` | `ExtractedCandidates` |
+| **resolver.py** | 최적 후보 선택 | `candidates` | `ResolvedFields` |
+| **normalizers.py** | 타입 변환 | 원본 문자열 | int, date, time |
+| **validators.py** | 검증 및 복구 | 정규화된 필드 | `ValidationResult` |
 
-| 방법 | 설명 | 신뢰도 점수 |
-|------|------|------------|
-| **Label-based** | 라벨 토큰 인식 (예: "총중량: 12,340 kg") | 85-100 |
-| **Pattern-based** | 정규식 패턴 매칭 | 30-70 |
-| **Heuristic** | 도메인 지식 활용 (예: 4자리 숫자 → 차량번호) | 10-40 |
+### 지원 모듈
 
-**신뢰도 점수 규칙**:
-- Label-based: 90점 기본 + 라벨 완전 일치 시 +10점
-- Pattern-based: 50점 기본
-- Heuristic: 30점 기본
-- 라벨 토큰과 같은 줄에 있으면 +15점 보너스
-
----
-
-#### 1.4 `resolver.py`
-**책임**: 필드별로 최적의 후보 선택
-
-**주요 함수**:
-- `resolve_fields(candidates: List[Candidate]) -> ResolvedFields`
-  - 필드별 최고 점수 후보 선택
-  - Tie-breaking 규칙 적용
-  - 선택 근거(evidence) 생성
-
-**선택 규칙**:
-1. **최고 점수 우선**: 신뢰도 점수가 가장 높은 후보
-2. **동점 시**:
-   - Label-based > Pattern-based > Heuristic
-   - 같은 방법이면 줄 번호가 빠른 것 우선
-
----
-
-#### 1.5 `normalizers.py`
-**책임**: 원본 값을 표준 형식으로 변환
-
-**주요 함수**:
-- `normalize_date(raw: str) -> Tuple[str, Optional[str]]`
-  - 다양한 구분자 처리 (-, ., /)
-  - 연속된 숫자 파싱 (20260202)
-  - YYYY-MM-DD 형식 출력
-  
-- `normalize_time(raw: str) -> Optional[str]`
-  - HH:MM 형식 출력
-  - 한글 시간 처리 (11시 33분)
-  - 괄호 제거
-  
-- `normalize_weight_kg(raw: str) -> Optional[int]`
-  - 쉼표, 공백, 괄호 제거
-  - OCR 공백 분리 보정 (5 900 kg → 5,900)
-  - kg 접미사 제거
-  - **최대 10회 반복** (무한루프 방지)
-
----
-
-#### 1.6 `validators.py`
-**책임**: 비즈니스 규칙 검증 및 자동 복구
-
-**주요 함수**:
-- `validate_and_recover(...) -> ParseResult`
-  - 필수 필드 검증
-  - 중량 관계식 검증
-  - 자동 복구 시도
-
-**검증 규칙** (`config.ValidationPolicy`):
-
-| 규칙 | 내용 |
+| 모듈 | 역할 |
 |------|------|
-| 필수 필드 | `date`, `vehicle_no` |
-| 중량 범위 | 0 < 중량 ≤ 100,000 kg |
-| 중량 관계 | 총중량 - 차중량 = 실중량 |
-| 허용 오차 | max(10kg, 중량 × 2%) |
-
-**자동 복구**:
-1. **실중량 누락** → 총중량 - 차중량으로 계산
-2. **중량 불일치** → 후보 풀에서 올바른 값 찾기
-
----
-
-#### 1.7 `pipeline.py`
-**책임**: 전체 파이프라인 오케스트레이션
-
-**주요 함수**:
-- `run_full_pipeline(raw_text: str, source: str) -> Dict`
-  - Loader → Preprocessor → Extractor → Resolver → Validator 순차 실행
-  - 각 단계별 산출물 생성
-  - 에러 핸들링
+| **config.py** | 검증 정책, 라벨 토큰, 전처리 규칙 순서, 상수 |
+| **patterns.py** | 날짜/시간/중량/차량번호 정규식 패턴 |
+| **schema.py** | 내부 데이터 모델 (dataclass) |
+| **schemas.py** | 출력 파일 스키마 (TypedDict) |
+| **output_formatters.py** | JSON/CSV 포맷팅 및 파일명 규칙 |
+| **utils.py** | 후보 요약, 중량 포맷팅, 콘솔 출력 생성 |
+| **error_handler.py** | 에러 수집, 복구 전략, 에러 리포트 생성 |
+| **logger.py** | 컬러 로깅, 파일 로깅, 컨텍스트 로깅 |
+| **progress.py** | 프로그레스 바, 상태 심볼, 섹션 헤더 |
 
 ---
 
-### 2. 설정 및 지원 모듈 (Support Modules)
+## 데이터 모델
 
-#### 2.1 `config.py`
-**책임**: 모든 정책, 패턴, 상수 중앙 관리
+### 내부 모델 (schema.py - dataclass)
 
-**클래스**:
-- `ValidationPolicy`: 검증 정책 (허용 오차, 필수 필드)
-- `LabelTokens`: 라벨 토큰 정의
-- `Patterns`: 정규식 패턴
-- `PreprocessRules`: 전처리 규칙 순서
-- `Constants`: 기타 상수 (반복 횟수, 인코딩 등)
+파이프라인 단계 간 데이터 전달용
 
-**장점**:
-- 정책 변경 시 config.py만 수정
-- 매직넘버 제거
-- 테스트 용이
+```python
+@dataclass
+class RawDocument:
+    source_path: str
+    raw_text: str
+    meta: Dict
 
----
+@dataclass
+class PreprocessedDocument:
+    raw_text: str
+    normalized_text: str
+    applied_rules: List[str]
+    warnings: List[str]
 
-#### 2.2 `schema.py`
-**책임**: 데이터 타입 정의 (Pydantic)
+@dataclass
+class Candidate:
+    field: str
+    value_raw: str
+    source_line: str
+    method: str  # "label" | "pattern"
+    score: int
+    meta: Dict
 
-**모델**:
-- `RawDocument`
-- `PreprocessedDocument`
-- `Candidate`
-- `ExtractedCandidates`
-- `ResolvedFields`
-- `ParseResult`
+@dataclass
+class ExtractedCandidates:
+    raw_text: str
+    normalized_text: str
+    candidates: List[Candidate]
+    warnings: List[str]
 
----
+@dataclass
+class ResolvedFields:
+    date_raw: Optional[str]
+    time_raw: Optional[str]
+    vehicle_no_raw: Optional[str]
+    gross_weight_raw: Optional[str]
+    tare_weight_raw: Optional[str]
+    net_weight_raw: Optional[str]
+    evidence: Dict
+    warnings: List[str]
 
-#### 2.3 `schemas.py`
-**책임**: 출력 데이터 타입 정의 (TypedDict)
-
-**스키마**:
-- `PreprocessLogSchema`
-- `CandidateSchema`
-- `ResolvedOutputSchema`
-- `ParsedOutputSchema`
-- `CSVRowSchema`
-
----
-
-#### 2.4 `output_formatters.py`
-**책임**: 출력 파일 생성 및 포맷팅
-
-**주요 함수**:
-- `format_preprocess_log()`, `format_extract_log()`, ...
-- `format_csv_row()`: 파싱 결과를 CSV 행으로 변환
-- `write_summary_csv()`: 요약 CSV 생성
-
-**파일명 규칙** (`FileNamingConvention`):
-- `{stem}_raw.txt`
-- `{stem}_normalized.txt`
-- `{stem}_preprocess_log.json`
-- `{stem}_candidates.json`
-- `{stem}_extract_log.json`
-- `{stem}_resolved.json`
-- `{stem}_parsed.json`
-- `summary.csv`
-
-**참고 문서**: [OUTPUT_SPEC.md](OUTPUT_SPEC.md)
-
----
-
-#### 2.5 `patterns.py`
-**책임**: 정규식 패턴 (하위 호환성)
-
-`config.Patterns`를 재노출하여 기존 코드와 호환성 유지.
-
----
-
-#### 2.6 `utils.py`
-**책임**: 순수 함수 유틸리티
-
-**주요 함수**:
-- `format_weight_kg()`: 중량 포맷팅
-- `summarize_candidates()`: 후보 통계
-- `compute_weight_relation_summary()`: 중량 관계식 요약
-- `build_processing_summary()`: 전체 처리 요약
-- `format_console_output()`: 콘솔 출력 포맷팅
-
-**특징**:
-- 순수 함수 (사이드 이펙트 없음)
-- 테스트 용이
-- I/O와 분리
-
----
-
-#### 2.7 `logger.py`
-**책임**: 로깅 시스템
-
-**기능**:
-- 파일 + 콘솔 로깅
-- 컬러 출력
-- 단계별 시간 측정
-- 로그 레벨 관리
-
-**로그 레벨**:
-- **DEBUG**: 상세 디버깅 정보
-- **INFO**: 정상 진행 상황
-- **WARNING**: 경고 (처리는 계속)
-- **ERROR**: 에러 (해당 파일 실패)
-- **CRITICAL**: 치명적 에러
-
-**참고 문서**: [CLI_GUIDE.md](CLI_GUIDE.md)
-
----
-
-#### 2.8 `progress.py`
-**책임**: 진행 상황 표시
-
-**기능**:
-- 프로그레스 바
-- 상태 심볼 (✓, ✗, !, ▶)
-- 테이블 출력
-
----
-
-#### 2.9 `error_handler.py`
-**책임**: 에러 핸들링 및 리포트
-
-**기능**:
-- 커스텀 예외 클래스
-- 에러 정보 수집
-- 에러 리포트 생성
-- 복구 가능 여부 판단
-
-**에러 타입**:
-- `RecoverableError`: 복구 가능한 에러 (계속 진행)
-- `CriticalError`: 치명적 에러 (처리 실패)
-
----
-
-### 3. 실행 엔트리포인트
-
-#### 3.1 `main.py`
-**책임**: 파일 I/O 및 파이프라인 오케스트레이션
-
-**주요 함수**:
-- `process_single_file()`: 단일 파일 처리
-- `main()`: 메인 실행 함수
-  - 로거 초기화
-  - 진행 상황 표시
-  - CSV 생성
-  - 에러 리포트
-
-**실행 방법**:
-```bash
-# 파이썬 모듈로 실행 (권장)
-python -m src.main
-
-# 또는 직접 실행
-python src/main.py
+@dataclass
+class ParseResult:
+    date: Optional[str]
+    time: Optional[str]
+    vehicle_no: Optional[str]
+    gross_weight_kg: Optional[int]
+    tare_weight_kg: Optional[int]
+    net_weight_kg: Optional[int]
+    parse_warnings: List[str]
+    validation_errors: List[str]
+    imputation_notes: List[str]
+    evidence: Dict
 ```
 
-**참고 문서**: [CLI_GUIDE.md](CLI_GUIDE.md)
+### 출력 스키마 (schemas.py - TypedDict)
+
+JSON/CSV 출력 파일용
+
+```python
+class PreprocessLogSchema(TypedDict):
+    source: str
+    applied_rules: List[str]
+    warnings: List[str]
+    raw_line_count: int
+    normalized_line_count: int
+
+class CandidatesOutputSchema(TypedDict):
+    source: str
+    candidates: List[Dict]
+
+class ResolvedOutputSchema(TypedDict):
+    source: str
+    resolved_fields: Dict
+    evidence: Dict
+    warnings: List[str]
+
+class ParsedOutputSchema(TypedDict):
+    source: str
+    date: Optional[str]
+    time: Optional[str]
+    vehicle_no: Optional[str]
+    gross_weight_kg: Optional[int]
+    tare_weight_kg: Optional[int]
+    net_weight_kg: Optional[int]
+    parse_warnings: List[str]
+    validation_errors: List[str]
+    imputation_notes: List[str]
+    is_valid: bool
+
+class CSVRowSchema(TypedDict):
+    filename: str
+    date: str
+    time: str
+    vehicle_no: str
+    gross_weight_kg: str
+    tare_weight_kg: str
+    net_weight_kg: str
+    is_valid: str
+    validation_errors: str
+    parse_warnings: str
+    imputation_notes: str
+```
+
+---
+
+## 설정 및 정책 (config.py)
+
+### ValidationPolicy
+```python
+MIN_TOLERANCE_KG = 10           # 최소 허용 오차
+TOLERANCE_PERCENT = 0.02        # 2% 허용 오차
+MAX_REALISTIC_WEIGHT_KG = 100000  # 100톤 상한
+REQUIRED_FIELDS = ["date", "vehicle_no"]
+```
+
+### LabelTokens
+```python
+GROSS_WEIGHT = ["총중량", "총 중량", ...]
+TARE_WEIGHT = ["차중량", "공차", "공차중량", ...]
+NET_WEIGHT = ["실중량", "적재중량", ...]
+DATE = ["일자", "날짜", "DATE"]
+TIME = ["시간", "TIME"]
+VEHICLE_NO = ["차량번호", "차 번", ...]
+```
+
+### PreprocessRules
+전처리 규칙 실행 순서 정의
+```python
+EXECUTION_ORDER = [
+    "collapsed_whitespace",
+    "normalized_punctuation_spacing",
+    "normalized_character_visual_noise",
+    "standardized_labels",
+    "converted_korean_time_to_colon_format",
+    "merged_split_numbers_before_kg",
+    "split_date_suffix_to_doc_seq",
+    "preserved_ambiguous_date_tail_as_raw_tail",
+    "split_vehicle_tail_keyword_as_category",
+    "normalized_coordinates",
+    "removed_symbol_only_lines",
+]
+```
+
+---
+
+## 에러 처리 시스템
+
+### ErrorHandler (error_handler.py)
+
+```python
+class ErrorHandler:
+    def handle_error(error, context, recoverable, recovery_action)
+    def get_error_summary() -> Dict
+    def has_critical_errors() -> bool
+    def generate_error_report() -> str
+```
+
+**에러 분류:**
+- `PipelineError` - 파이프라인 기본 예외
+- `FileReadError` - 파일 읽기 실패
+- `PreprocessError` - 전처리 실패
+- `ExtractError` - 추출 실패
+- `ResolveError` - 후보 선택 실패
+- `ValidationError` - 검증 실패
+- `OutputError` - 출력 생성 실패
+
+**유틸리티:**
+- `safe_execute()` - 기본값 반환
+- `retry_on_error()` - 재시도 로직
+
+---
+
+## 로깅 시스템
+
+### Logger (logger.py)
+
+**기능:**
+- 컬러 콘솔 출력
+- 파일 로깅 (타임스탬프 포함)
+- 로그 레벨: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+**사용법:**
+```python
+from logger import setup_logger, log_step
+
+logger = setup_logger(
+    name="ocr_pipeline",
+    log_dir=Path("logs"),
+    console_level=logging.INFO,
+    file_level=logging.DEBUG,
+    enable_color=True
+)
+
+with log_step(logger, "전처리 단계"):
+    # 작업 수행
+    pass
+```
+
+---
+
+## 진행 상황 표시 (progress.py)
+
+**컴포넌트:**
+- `ProgressBar` - 프로그레스 바
+- `StepProgress` - 단계별 진행 표시
+- `Spinner` - 로딩 스피너
+- `print_section_header()` - 섹션 헤더
+- `print_status()` - 상태 메시지 (✓/✗/!)
+- `Colors` - ANSI 색상 코드
 
 ---
 
 ## 테스트 구조
 
-### 테스트 커버리지
-
-| 모듈 | 테스트 대상 | 테스트 개수 | 우선순위 |
-|------|------------|------------|---------|
-| `normalizers.py` | 정규화 함수 | 30+ | 🔥 High |
-| `validators.py` | 검증/복구 로직 | 15+ | 🔥 High |
-| `utils.py` | 유틸리티 함수 | 15+ | 🟡 Medium |
-| `preprocessor.py` | 전처리 엔진 | 15+ | 🟡 Medium |
-| `config.py` | 설정/정책 | 10+ | 🟢 Low |
-| `schemas.py` | 스키마 | 20+ | 🟢 Low |
-| `output_formatters.py` | 포맷터 | 20+ | 🟢 Low |
-
-**총 테스트 개수: 125+**
-
-### 테스트 실행
-
-```bash
-# 전체 테스트
-pytest tests/
-
-# 커버리지 포함
-pytest --cov=src tests/
-
-# 상세 출력
-pytest -v tests/
-
-# 특정 파일만
-pytest tests/test_normalizers.py
+```
+tests/
+├── conftest.py              # 공통 fixtures
+├── test_config.py           # 정책 및 상수
+├── test_normalizers.py      # 정규화 함수 (30+ 테스트)
+├── test_validators.py       # 검증 로직 (15+ 테스트)
+├── test_utils.py            # 유틸리티 (15+ 테스트)
+├── test_preprocessor.py     # 전처리 엔진 (15+ 테스트)
+├── test_schemas.py          # 스키마 검증
+└── test_output_formatters.py # 출력 포맷팅
 ```
 
-**참고 문서**: [README_TEST.md](README_TEST.md)
+**총 테스트 개수: 85+**
 
 ---
 
-## 데이터 흐름
+## 실행 방법
 
-```python
-# 1. 로드
-raw_text = load_ocr_json(input_file)
-# → RawDocument(source_path, raw_text, meta)
+```bash
+# 1. 의존성 설치
+pip install -r requirements.txt
 
-# 2. 전처리
-preprocessed = preprocess(raw_text)
-# → PreprocessedDocument(normalized_text, applied_rules, warnings)
+# 2. 실행
+python -m src.main
 
-# 3. 추출
-extracted = extract_candidates(preprocessed.normalized_text)
-# → ExtractedCandidates(candidates, warnings)
+# 3. 테스트
+pytest tests/
 
-# 4. 후보 선택
-resolved = resolve_fields(extracted.candidates)
-# → ResolvedFields(date_raw, time_raw, ..., evidence, warnings)
-
-# 5. 정규화 및 검증
-parsed = validate_and_recover(
-    date=normalize_date(resolved.date_raw),
-    time=normalize_time(resolved.time_raw),
-    ...
-)
-# → ParseResult(date, time, ..., validation_errors, is_valid)
+# 4. 커버리지
+pytest --cov=src tests/
 ```
+
+---
+
+## 출력 파일
+
+**개별 파일당 7개 산출물:**
+1. `{stem}_raw.txt` - 원문
+2. `{stem}_normalized.txt` - 정규화 텍스트
+3. `{stem}_preprocess_log.json` - 전처리 로그
+4. `{stem}_candidates.json` - 후보 목록
+5. `{stem}_extract_log.json` - 추출 로그
+6. `{stem}_resolved.json` - 후보 선택 결과
+7. `{stem}_parsed.json` - 최종 파싱 결과
+
+**전체 요약:**
+8. `summary.csv` - 전체 파일 요약
 
 ---
 
 ## 설계 원칙
 
-### 1. 단일 책임 원칙 (SRP)
-- 각 모듈은 하나의 명확한 책임만 가짐
-- Preprocessor는 텍스트 정규화만
-- Extractor는 후보 추출만
-- Validator는 검증만
-
-### 2. 관심사 분리 (SoC)
-- 비즈니스 로직 vs 파일 I/O 분리
-- 순수 함수 vs 사이드 이펙트 분리
-- 정책(config) vs 구현(logic) 분리
-
-### 3. 의존성 역전 (DIP)
-- 모듈이 설정(config)에 의존
-- 설정 변경 시 코드 수정 불필요
-
-### 4. 테스트 가능성
-- 순수 함수 중심 설계
-- I/O 분리로 모킹 불필요
-- 125+ 단위 테스트
+1. **단계별 책임 분리** - 각 모듈은 명확한 단일 책임
+2. **원문 보존** - 원본 데이터는 절대 변형하지 않음
+3. **보수적 정규화** - 삭제보다 분리/보존 우선
+4. **추적 가능성** - 모든 처리 과정 기록
+5. **테스트 가능성** - 순수 함수 중심 설계
+6. **확장 가능성** - 새로운 규칙/정책 추가 용이
 
 ---
 
-## Sprint 5 성과
+## 의존성
 
-###  완료된 작업
+**핵심:**
+- Python 3.10+
 
-#### Step 1: 패턴/라벨/정책 상수 중앙화
-- [x] config.py 생성
-- [x] ValidationPolicy 클래스
-- [x] LabelTokens 클래스
-- [x] Patterns 클래스
-- [x] PreprocessRules 클래스
-- [x] 관련 모듈 리팩토링
+**라이브러리:**
+```
+pydantic        # 데이터 검증
+regex           # 정규식
+python-dateutil # 날짜 파싱
+pandas          # CSV 처리
+```
 
-#### Step 2: main.py 로직 분리
-- [x] utils.py 생성 (순수 함수)
-- [x] main.py 리팩토링 (I/O 분리)
-- [x] 테스트 가능성 개선
-
-#### Step 3: 단위 테스트 작성
-- [x] test_normalizers.py (30+ 테스트)
-- [x] test_validators.py (15+ 테스트)
-- [x] test_utils.py (15+ 테스트)
-- [x] test_preprocessor.py (15+ 테스트)
-- [x] test_config.py (10+ 테스트)
-- [x] pytest 설정 및 구조화
-
-#### Step 4: 결과 파일 출력 고정
-- [x] schemas.py (출력 스키마)
-- [x] output_formatters.py (포맷터)
-- [x] test_schemas.py (20+ 테스트)
-- [x] test_output_formatters.py (20+ 테스트)
-- [x] OUTPUT_SPEC.md (명세서)
-- [x] summary.csv 자동 생성
-
-#### Step 5: CLI 실행 흐름 안정화
-- [x] logger.py (로깅 시스템)
-- [x] progress.py (진행 상황 표시)
-- [x] error_handler.py (에러 핸들링)
-- [x] main.py에 적용
-- [x] CLI_GUIDE.md (사용 가이드)
-
-###  완료 상태
-
-모든 단계가 완료되었습니다.
-
----
-
-## 확장 가능성
-
-### 새로운 필드 추가
-1. `config.LabelTokens`에 라벨 토큰 추가
-2. `extractor.py`에 추출 로직 추가
-3. `normalizers.py`에 정규화 함수 추가
-4. `schemas.py`에 스키마 필드 추가
-
-### 새로운 검증 규칙 추가
-1. `config.ValidationPolicy`에 정책 추가
-2. `validators.py`에 검증 로직 추가
-
-### 새로운 전처리 규칙 추가
-1. `preprocessor.py`에 규칙 함수 작성
-2. `config.PreprocessRules.EXECUTION_ORDER`에 추가
-
-**참고 문서**: [preprocess_spec.md](preprocess_spec.md)
-
----
-
-## 성능 고려사항
-
-### 현재 구현
-- 단일 스레드 순차 처리
-- 파일당 평균 처리 시간: ~0.5초
-- 메모리 사용량: 파일당 ~10MB
-
-### 향후 개선 방향
-1. **병렬 처리**: 멀티프로세싱으로 파일 동시 처리
-2. **캐싱**: 정규식 컴파일 결과 캐싱
-3. **스트리밍**: 대용량 파일 청크 단위 처리
-4. **배치 처리**: 데이터베이스 bulk insert
-
----
-
-## 참고 문서
-
-### 설계 및 명세
-- [architecture.md](architecture.md): 시스템 아키텍처
-- [preprocess_spec.md](preprocess_spec.md): 전처리 규칙 명세
-- [OUTPUT_SPEC.md](OUTPUT_SPEC.md): 출력 파일 명세
-- [data_audit.md](data_audit.md): OCR 샘플 전수 조사
-
-### 실행 및 테스트
-- [CLI_GUIDE.md](CLI_GUIDE.md): CLI 사용 가이드
-- [README_TEST.md](README_TEST.md): 테스트 실행 가이드
-
-### 계획
-- [sprint.md](sprint.md): Sprint 계획
-- [README_docs.md](README_docs.md): 문서 인덱스
-
----
+**테스트:**
+```
+pytest          # 테스트 프레임워크
+pytest-cov      # 커버리지
+pytest-mock     # 모킹
+```
