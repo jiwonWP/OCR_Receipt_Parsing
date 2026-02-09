@@ -95,4 +95,5 @@ class ParseResult:
 
     parse_warnings: List[str] = field(default_factory=list)
     validation_errors: List[str] = field(default_factory=list)
+    imputation_notes: List[str] = field(default_factory=list)
     evidence: Dict[str, Any] = field(default_factory=dict)
