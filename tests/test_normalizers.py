@@ -1,9 +1,3 @@
-"""
-normalizers.py 모듈 단위 테스트
-- normalize_weight_kg: 중량 정규화 함수
-- normalize_time: 시간 정규화 함수  
-- normalize_date: 날짜 정규화 함수
-"""
 import pytest
 from src.normalizers import normalize_weight_kg, normalize_time, normalize_date
 
@@ -17,13 +11,13 @@ class TestNormalizeWeightKg:
         assert normalize_weight_kg("5010") == 5010
     
     def test_comma_separated(self):
-        """천 단위 콤마 포함"""
+        """천단위 콤마 포함"""
         assert normalize_weight_kg("12,340") == 12340
         assert normalize_weight_kg("5,010") == 5010
         assert normalize_weight_kg("1,234,567") == 1234567
     
     def test_with_kg_suffix(self):
-        """kg 포함"""
+        """kg 접미사 포함"""
         assert normalize_weight_kg("12340 kg") == 12340
         assert normalize_weight_kg("12,340kg") == 12340
         assert normalize_weight_kg("12,340 KG") == 12340
@@ -117,7 +111,7 @@ class TestNormalizeTime:
     def test_invalid_hour(self):
         """유효하지 않은 시간 (24시 이상)"""
         assert normalize_time("25:00") is None
-        assert normalize_time("24:00") is None  
+        assert normalize_time("24:00") is None 
     
     def test_invalid_minute(self):
         """유효하지 않은 분 (60분 이상)"""
@@ -139,7 +133,8 @@ class TestNormalizeTime:
         assert normalize_time("12340") is None
 
 
-# 날짜 정규화 함수 테스트
+# normalize_date 테스트 (날짜 정규화)
+
 class TestNormalizeDate:
     
     def test_standard_iso_format(self):
