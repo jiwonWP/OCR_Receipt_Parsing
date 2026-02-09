@@ -148,11 +148,11 @@ class TestValidateAndRecover:
             vehicle_no="80구8713",
             gross_weight_kg=12480,
             tare_weight_kg=7470,
-            net_weight_kg=5050,
+            net_weight_kg=5110,
         )
         
         assert result.is_valid is True
-        assert result.net_weight_kg == 5050
+        assert result.net_weight_kg == 5110
     
     def test_recovery_by_candidates_net_missing(self):
         """후보 기반 실중량 복구 (gross, tare 고정 -> net 찾기)"""
