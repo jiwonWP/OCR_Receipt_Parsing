@@ -215,7 +215,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.3 `normalize_label_variants(text) -> str`
+### 4.4 `normalize_label_variants(text) -> str`
 
 #### 목적
 - 라벨 표기 불일치/라벨 내부 공백 삽입을 흡수하여 “표준 라벨”로 통일한다.
@@ -253,7 +253,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.4 `normalize_korean_time_format(text) -> str`
+### 4.5 `normalize_korean_time_format(text) -> str`
 
 #### 목적
 - 한글 시간 표현을 `HH:MM` 형태로 통일한다.
@@ -272,7 +272,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.5 `normalize_number_grouping_before_unit(text) -> str`
+### 4.6 `normalize_number_grouping_before_unit(text) -> str`
 
 #### 목적
 - OCR에서 천 단위 구분이 공백으로 인식되는 문제를 보정하여 중량 파싱 실패를 방지한다.
@@ -296,7 +296,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.6 `normalize_date_suffix(text) -> str`
+### 4.7 `normalize_date_suffix(text) -> str`
 
 #### 목적
 - 날짜가 `YYYY-MM-DD-<digits>` 형태로 결합된 경우, 날짜와 suffix(문서번호/시퀀스)를 분리하여 보존한다.
@@ -320,7 +320,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.7 `normalize_datetime_trailing_garbage(text) -> str`
+### 4.8 `normalize_datetime_trailing_garbage(text) -> str`
 
 #### 목적
 - 날짜 뒤에 붙은 콜론 없는 숫자 꼬리(`0016`, `5` 등)를 시간으로 단정하지 않고 분리/보존한다.
@@ -349,7 +349,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.8 `normalize_vehicle_value_noise(text) -> str`
+### 4.9 `normalize_vehicle_value_noise(text) -> str`
 
 #### 목적
 - 차량번호 값에 `입고/출고` 같은 구분 키워드가 결합되는 “값 오염”을 분리한다.
@@ -371,7 +371,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.9 `normalize_coordinates(text) -> str`
+### 4.10 `normalize_coordinates(text) -> str`
 
 #### 목적
 - 좌표를 `lat,lon` 형태로 통일해 추출 패턴을 단순화한다.
@@ -389,7 +389,7 @@ OCR에서 관측된 "치명적 오타/유사 형태"는 상수 맵으로 명시�
 
 ---
 
-### 4.10 `normalize_line_noise(text) -> str`
+### 4.11 `normalize_line_noise(text) -> str`
 
 #### 목적
 - 의미 없는 “기호-only 라인”을 제거하여 핵심 라벨 라인의 밀도를 높인다.

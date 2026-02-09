@@ -45,6 +45,11 @@ python -m src.main
 | sample_0X_raw.txt | OCR 원문 텍스트 (원문 그대로 보존) |
 | sample_0X_normalized.txt | 전처리(정규화) 완료 텍스트 |
 | sample_0X_preprocess_log.json | 적용 규칙(`applied_rules`) 및 경고(`warnings`) 로그 |
+| sample_0X_candidates.json | 추출된 후보 목록 |  
+| sample_0X_extract_log.json | 추출 단계 로그 | 
+| sample_0X_resolved.json | 후보 선택 결과 |
+| sample_0X_parsed.json | 최종 파싱 결과 (검증 완료) | 
+| summary.csv | 전체 샘플 요약 (CSV) | 
 
 ---
 
