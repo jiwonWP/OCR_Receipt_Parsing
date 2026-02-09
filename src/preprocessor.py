@@ -68,27 +68,33 @@ def normalize_character_visual_noise(text: str) -> RuleResult:
     """
     warnings = []
     t = text
+    changed = False
     
     # 날짜 패턴 내 O -> 0 치환
     def fix_date(m: re.Match) -> str:
         corrected = m.group(0).replace('O', '0').replace('o', '0')
         if corrected != m.group(0):
-            warnings.append("found_visual_noise_correction")
+            changed= True
+            if "found_visual_noise_correction" not in warnings:  
+                warnings.append("found_visual_noise_correction")
         return corrected
     
     t = re.sub(r'\d{4}[-./][O\do]{1,2}[-./][O\do]{1,2}', fix_date, t)
     
     # kg 근처 숫자 내 O -> 0, I/l -> 1 치환
     def fix_weight(m: re.Match) -> str:
+        nonlocal changed
         num = m.group('num')
         corrected = num.replace('O', '0').replace('o', '0').replace('I', '1').replace('l', '1')
         if corrected != num:
-            warnings.append("found_visual_noise_correction")
+            changed = True
+            if "found_visual_noise_correction" not in warnings:
+                warnings.append("found_visual_noise_correction")
         return corrected + ' ' + m.group('unit')
     
     t = re.sub(r'(?P<num>[\dOolI,\s]+)\s*(?P<unit>kg|KG)', fix_weight, t)
     
-    return RuleResult(text=t, changed=(t != text), warnings=warnings)
+    return RuleResult(text=t, changed=changed, warnings=warnings)
 
 
 def normalize_label_variants(text: str) -> RuleResult:
